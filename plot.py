@@ -174,11 +174,12 @@ def make_figure(dfs, labels, time_step_format):
 
 
 # TODO: Figure out why the graph object height is 100% of view window
-def figures_to_html(figs, filename="dashboard.html"):
+def figures_to_html(scenario_num, figs, filename="dashboard.html"):
     dashboard = open(filename, 'w')
     dashboard.write("<html>"
                     "<head><link rel='stylesheet' type='text/css' href='assets/style.css'></head>"
                     "<body><div class='container'><h2>COVID-19 Forecast for TMC (Experimental Draft; Do Not Take Seriously)</h2>" + "\n")
+    dashboard.write("<h3>" + "Scenario: " + str(scenario_num) + "</h3>" + "\n")
     for k, v in figs.items():
         inner_html = v.to_html().split("<body>")[1].split("</body>")[0]
         dashboard.write(inner_html)
@@ -207,8 +208,14 @@ def main():
     if dash == True:
         return figures
     else:
-        # TODO: Print all figures from different scenarios reasonably
-        figures_to_html(figures[0], filename=config['output_html_file'])
+        for scenario_num, figure_dict in enumerate(figures):
+            # Generates a filename of the form: dashboard0.html for Scenario 0, dashboard1.html for Scenario 1, etc.
+            filename_parts = config['output_html_file'].split('.')
+            filename = filename_parts[0] + str(scenario_num)
+            filename_ext = "." + filename_parts[1]
+
+            full_filename = filename + filename_ext
+            figures_to_html(scenario_num, figure_dict, full_filename)
 
 
 if __name__ == "__main__":
