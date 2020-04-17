@@ -73,7 +73,7 @@ def load_labels():
     return label_dict
 
 
-def make_figure(dfs, labels, time_step_format):
+def make_figure(dfs, labels, time_step_format, dash):
     all_scenario_figures = []
     for df in dfs:
         percentiles = sorted(df.percentile.unique())
@@ -140,32 +140,42 @@ def make_figure(dfs, labels, time_step_format):
                     xaxis_linecolor="#464646",
                     yaxis_linecolor="#464646"
                 )
-
-                fig.update_layout(
-                    xaxis=dict(
-                        # rangeselector=dict(
-                        #     buttons=list([
-                        #         dict(count=7,
-                        #              label="1w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=14,
-                        #              label="2w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=30,
-                        #              label="1m",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(step="all")
-                        #     ]),
-                        # ),
-                        rangeslider=dict(
-                            visible=True
+                if dash:
+                    fig.update_layout(
+                        xaxis=dict(
+                            fixedrange=True,
+                            type="date"
                         ),
-                        type="date"
+                        yaxis=dict(
+                            fixedrange=True
+                        )
                     )
-                )
+                else:
+                    fig.update_layout(
+                        xaxis=dict(
+                            # rangeselector=dict(
+                            #     buttons=list([
+                            #         dict(count=7,
+                            #              label="1w",
+                            #              step="day",
+                            #              stepmode="backward"),
+                            #         dict(count=14,
+                            #              label="2w",
+                            #              step="day",
+                            #              stepmode="backward"),
+                            #         dict(count=30,
+                            #              label="1m",
+                            #              step="day",
+                            #              stepmode="backward"),
+                            #         dict(step="all")
+                            #     ]),
+                            # ),
+                            rangeslider=dict(
+                                visible=True
+                            ),
+                            type="date"
+                        )
+                    )
 
             figures[labels[y]] = fig
 
@@ -202,10 +212,10 @@ def main():
 
     dfs, time_step_format = load_output_data(config)
     labels = load_labels()
-    figures = make_figure(dfs, labels, time_step_format)
+    figures = make_figure(dfs, labels, time_step_format, dash)
 
     if dash == True:
-        return figures
+        return figures, dfs
     else:
         # TODO: Print all figures from different scenarios reasonably
         figures_to_html(figures[0], filename=config['output_html_file'])
