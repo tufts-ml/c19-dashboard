@@ -124,7 +124,7 @@ def make_figure(dfs, labels, time_step_format):
                         line=dict(color='indigo'),
                         name='%ile: ' + str(float(p))
                     ))
-
+            
                 fig.update_layout(
                     title=labels[y],
                     xaxis_tickformat=time_step_format,
@@ -141,36 +141,103 @@ def make_figure(dfs, labels, time_step_format):
                     yaxis_linecolor="#464646"
                 )
 
-                fig.update_layout(
-                    xaxis=dict(
-                        # rangeselector=dict(
-                        #     buttons=list([
-                        #         dict(count=7,
-                        #              label="1w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=14,
-                        #              label="2w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=30,
-                        #              label="1m",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(step="all")
-                        #     ]),
-                        # ),
-                        rangeslider=dict(
-                            visible=True
-                        ),
-                        type="date"
-                    )
-                )
+                # fig.update_layout(
+                #     xaxis=dict(
+                #         # rangeselector=dict(
+                #         #     buttons=list([
+                #         #         dict(count=7,
+                #         #              label="1w",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(count=14,
+                #         #              label="2w",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(count=30,
+                #         #              label="1m",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(step="all")
+                #         #     ]),
+                #         # ),
+                #         rangeslider=dict(
+                #             visible=True, 
+                #         ),
+                #         type="date"
+                #     )
+                # )
 
             figures[labels[y]] = fig
 
         all_scenario_figures.append(figures)
     return all_scenario_figures
+
+def make_plot_dfs(dfs, labels, time_step_format):
+    all_scenario_dfs = []
+
+    for df in dfs:
+        percentiles = sorted(df.percentile.unique())
+
+        y_cols = list(df.columns)
+        y_cols.remove('timestep')
+        y_cols.remove('percentile')
+        y_cols.remove('timestep_formatted')
+        y_cols.remove('bound')
+
+        plt_dfs = {}
+
+        # Use the order of the labels.json file for order of figures
+        # Much easier to change downstream
+        for y in labels.keys():
+
+            plt_df = {}
+
+            for p in percentiles:
+                df_filtered = df[df['percentile'] == p]
+
+                if df_filtered['bound'].all() == 'lower':
+                    plt_df['lower_plt_x'] = df_filtered.timestep_formatted
+                    plt_df['lower_plt_y'] = df_filtered[y]
+                    plt_df['lower_plt_fill']="none"
+                    plt_df['lower_plt_mode']='lines'
+                    plt_df['lower_plt_line'] = dict(color='indigo', width=0)
+                    plt_df['lower_plt_name']='%ile: ' + str(float(p))
+
+                elif df_filtered['bound'].all() == 'upper':
+                    plt_df['upper_plt_x'] = df_filtered.timestep_formatted
+                    plt_df['upper_plt_y'] = df_filtered[y]
+                    plt_df['upper_plt_fill']="tonexty"
+                    plt_df['upper_plt_fillcolor']="rgba(75, 0, 130,0.2)"
+                    plt_df['upper_plt_mode']='lines'
+                    plt_df['upper_plt_line'] = dict(color='indigo', width=0)
+                    plt_df['upper_plt_name']='%ile: ' + str(float(p))
+                    
+                else:
+                    plt_df['mid_plt_x']=df_filtered.timestep_formatted
+                    plt_df['mid_plt_y']=df_filtered[y]
+                    plt_df['mid_plt_fill']="tonexty"
+                    plt_df['mid_plt_fillcolor']="rgba(75, 0, 130,0.2)"
+                    plt_df['mid_plt_line']=dict(color='indigo')
+                    plt_df['mid_plt_name']='%ile: ' + str(float(p))
+                    
+                plt_df['plt_title']=labels[y]
+                plt_df['plt_xaxis_tickformat']=time_step_format
+                plt_df['plt_xaxis_tickangle']=-45
+                plt_df['plt_yaxis_title']="Patient Count"
+                plt_df['plt_font']=dict(
+                    size=12,
+                    color="#464646"
+                )
+                plt_df['plt_hovermode']='x unified'
+                plt_df['plt_showlegend']=False
+                plt_df['plt_plot_bgcolor']='rgba(0,0,0,0)'
+                plt_df['plt_xaxis_linecolor']="#464646"
+                plt_df['plt_yaxis_linecolor']="#464646"
+
+            plt_dfs[labels[y]] = plt_df
+
+        all_scenario_dfs.append(plt_dfs)
+    return all_scenario_dfs
 
 
 # TODO: Figure out why the graph object height is 100% of view window
@@ -203,9 +270,11 @@ def main():
     dfs, time_step_format = load_output_data(config)
     labels = load_labels()
     figures = make_figure(dfs, labels, time_step_format)
+    data_for_plots = make_plot_dfs(dfs, labels, time_step_format)
 
     if dash == True:
-        return figures
+        #return figures
+        return data_for_plots
     else:
         # TODO: Print all figures from different scenarios reasonably
         figures_to_html(figures[0], filename=config['output_html_file'])
