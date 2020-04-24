@@ -69,37 +69,6 @@ def graph(ch, sc):
                         value=[0, 7]
                     ),])
 
-# def display_graphs(jsonified_data) -> List:
-
-#     dff = pd.read_json(jsonified_data, orient='split')
-#     selected_charts = dff['sel_chrts'][0]
-#     selected_scenario = dff['sel_scenario'][0]
-
-#     plot_dict = plot_dicts[selected_scenario]
-#     graphs = []
-#     #if selectec_charts is not None:
-#     if isinstance(selected_charts, Iterable): 
-#         for value in selected_charts:
-#             print("adding" + value)
-#             curr_plt = plot_dict[value]
-
-#             graphs.append(dcc.Graph(id=value+'-fig')) #figure=plot_dict[value]))
-#             graphs.append(dcc.RangeSlider(
-#                                 id=value+'-slider',
-#                                 min=0,
-#                                 max=len(curr_plt['mid_plt_x']),
-#                                 step=None,
-#                                 marks={
-#                                     0: '0 days',
-#                                     7: '1 week',
-#                                     14: '2 weeks',
-#                                     40: '40 days'
-#                                 },
-#                                 value=[0, 7]
-#                             )
-#                         )
-#         return graphs
-
 @dash_app.callback(Output('Patients Presenting at Hospital-fig', 'figure'), 
                     [Input('Patients Presenting at Hospital-slider', 'value'),
                      Input('intermediate-value', 'children')])
