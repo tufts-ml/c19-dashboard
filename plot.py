@@ -21,16 +21,13 @@ def load_output_data(config=None):
 
     summary_files = [(key, val) for (key, val) in config.items() if key.startswith('summary_')]
     all_scenario_dataframes = []
-    for scenario_number in range(0, int(num_scenarios)):
+    for scenario_number in range(0, num_scenarios):
         scenario_dataframes = []
         scenario_output_path = output_path + '_{}/'.format(scenario_number)
         for file_type, file_name in summary_files:
             percentile = re.findall('\d*\.?\d+', file_name)[0]
 
-            try:
-                df_temp = pd.read_csv(os.path.join(scenario_output_path, file_name))
-            except FileNotFoundError:
-                df_temp = pd.read_csv(os.path.join(output_path, file_name))
+            df_temp = pd.read_csv(os.path.join(scenario_output_path, file_name))
             df_temp['percentile'] = percentile
             df_temp['timestep_formatted'] = df_temp.apply(lambda x: fill_timestep(x.timestep, first_time_step_datetime, time_delta), axis=1)
 
@@ -127,7 +124,7 @@ def make_figure(dfs, labels, time_step_format):
                         line=dict(color='indigo'),
                         name='%ile: ' + str(float(p))
                     ))
-
+            
                 fig.update_layout(
                     title=labels[y],
                     xaxis_tickformat=time_step_format,
@@ -144,92 +141,113 @@ def make_figure(dfs, labels, time_step_format):
                     yaxis_linecolor="#464646"
                 )
 
-                fig.update_layout(
-                    xaxis=dict(
-                        # rangeselector=dict(
-                        #     buttons=list([
-                        #         dict(count=7,
-                        #              label="1w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=14,
-                        #              label="2w",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(count=30,
-                        #              label="1m",
-                        #              step="day",
-                        #              stepmode="backward"),
-                        #         dict(step="all")
-                        #     ]),
-                        # ),
-                        rangeslider=dict(
-                            visible=True
-                        ),
-                        type="date"
-                    )
-                )
+                # fig.update_layout(
+                #     xaxis=dict(
+                #         # rangeselector=dict(
+                #         #     buttons=list([
+                #         #         dict(count=7,
+                #         #              label="1w",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(count=14,
+                #         #              label="2w",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(count=30,
+                #         #              label="1m",
+                #         #              step="day",
+                #         #              stepmode="backward"),
+                #         #         dict(step="all")
+                #         #     ]),
+                #         # ),
+                #         rangeslider=dict(
+                #             visible=True, 
+                #         ),
+                #         type="date"
+                #     )
+                # )
 
             figures[labels[y]] = fig
 
         all_scenario_figures.append(figures)
     return all_scenario_figures
 
+def make_plot_dfs(dfs, labels, time_step_format):
+    all_scenario_dfs = []
+
+    for df in dfs:
+        percentiles = sorted(df.percentile.unique())
+
+        y_cols = list(df.columns)
+        y_cols.remove('timestep')
+        y_cols.remove('percentile')
+        y_cols.remove('timestep_formatted')
+        y_cols.remove('bound')
+
+        plt_dfs = {}
+
+        # Use the order of the labels.json file for order of figures
+        # Much easier to change downstream
+        for y in labels.keys():
+
+            plt_df = {}
+
+            for p in percentiles:
+                df_filtered = df[df['percentile'] == p]
+
+                if df_filtered['bound'].all() == 'lower':
+                    plt_df['lower_plt_x'] = df_filtered.timestep_formatted
+                    plt_df['lower_plt_y'] = df_filtered[y]
+                    plt_df['lower_plt_fill']="none"
+                    plt_df['lower_plt_mode']='lines'
+                    plt_df['lower_plt_line'] = dict(color='indigo', width=0)
+                    plt_df['lower_plt_name']='%ile: ' + str(float(p))
+
+                elif df_filtered['bound'].all() == 'upper':
+                    plt_df['upper_plt_x'] = df_filtered.timestep_formatted
+                    plt_df['upper_plt_y'] = df_filtered[y]
+                    plt_df['upper_plt_fill']="tonexty"
+                    plt_df['upper_plt_fillcolor']="rgba(75, 0, 130,0.2)"
+                    plt_df['upper_plt_mode']='lines'
+                    plt_df['upper_plt_line'] = dict(color='indigo', width=0)
+                    plt_df['upper_plt_name']='%ile: ' + str(float(p))
+                    
+                else:
+                    plt_df['mid_plt_x']=df_filtered.timestep_formatted
+                    plt_df['mid_plt_y']=df_filtered[y]
+                    plt_df['mid_plt_fill']="tonexty"
+                    plt_df['mid_plt_fillcolor']="rgba(75, 0, 130,0.2)"
+                    plt_df['mid_plt_line']=dict(color='indigo')
+                    plt_df['mid_plt_name']='%ile: ' + str(float(p))
+                    
+                plt_df['plt_title']=labels[y]
+                plt_df['plt_xaxis_tickformat']=time_step_format
+                plt_df['plt_xaxis_tickangle']=-45
+                plt_df['plt_yaxis_title']="Patient Count"
+                plt_df['plt_font']=dict(
+                    size=12,
+                    color="#464646"
+                )
+                plt_df['plt_hovermode']='x unified'
+                plt_df['plt_showlegend']=False
+                plt_df['plt_plot_bgcolor']='rgba(0,0,0,0)'
+                plt_df['plt_xaxis_linecolor']="#464646"
+                plt_df['plt_yaxis_linecolor']="#464646"
+
+            plt_dfs[labels[y]] = plt_df
+
+        all_scenario_dfs.append(plt_dfs)
+    return all_scenario_dfs
+
 
 # TODO: Figure out why the graph object height is 100% of view window
-def figures_to_html(figs, labels, scenario_title, first_time_step, filename="dashboard.html"):
+def figures_to_html(figs, filename="dashboard.html"):
     dashboard = open(filename, 'w')
-    html = '''<html>
-           <head>
-           <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-           <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>        
-           <link rel='stylesheet' type='text/css' href='assets/style.css'>
-           </head>
-           <body>
-           <div class='container'>
-           <h2>COVID-19 Forecast for TMC (Experimental Draft)</h2>
-           <h1 class="text-center"> {scenario_title} </h1>
-           <div class="container-fluid text-left">
-           <div class="row content">
-           <p> Forecasts started on day: {first_time_step} </p>
-           <a name='resources'><h3>Resources</h3></a>
-                <ul>
-                    <li> Parameters: <a href="params.txt">params.txt</a> </li>
-                    <li> Mean CSV summary: <a href="summary-mean.csv">summary-mean.csv</a> </li>
-                    <li> Median CSV summary: <a href="summary-percentile=050.00.csv">summary-percentile=050.00.csv</a></li> 
-                    <li> 2.5th-perc. CSV summary: <a href="summary-percentile=002.50.csv">summary-percentile=002.50.csv</a></li> 
-                    <li> 97.5th-perc. CSV summary: <a href="summary-percentile=097.50.csv">summary-percentile=097.50.csv</a></li> 
-                </ul>
-           </div>
-           <div class="row content">
-           <a name='toc'><h3>Plots</h3></a>
-           <div class="col-md-12 text-left"> 
-           <table class="table" width="100%" border="1">
-        '''.format(scenario_title=scenario_title, first_time_step=first_time_step)
-
-    keys = list(labels.keys())
-    L = len(keys)
-    C = 3 # num cols
-    M = L // C # num rows
-    list_per_row = [keys[m::M] for m in range(M)]
-    key_order = sum(list_per_row, []) # concatenate into flat ordered list
-    is_first_col = lambda kk: (kk % C == 0)
-    is_last_col = lambda kk: (kk % C == (M-1))
-    for kk, key in enumerate(key_order):
-        if is_first_col(kk):
-            html += "\n<tr>"
-        html += '\n    <td class="col-md-4"><a href="#%s">%s</a></td>' % (key, labels[key])
-        if is_last_col(kk):
-            html += "\n</tr>"
-    html += "\n</table></div></div></div>"
-    dashboard.write(html + "\n\n")
-
-    inv_labels = dict(zip(labels.values(), labels.keys()))
-
+    dashboard.write("<html>"
+                    "<head><link rel='stylesheet' type='text/css' href='assets/style.css'></head>"
+                    "<body><div class='container'><h2>COVID-19 Forecast for TMC (Experimental Draft; Do Not Take Seriously)</h2>" + "\n")
     for k, v in figs.items():
         inner_html = v.to_html().split("<body>")[1].split("</body>")[0]
-        dashboard.write("<a name='%s'><h4>%s</h4>\n" % (inv_labels[k], k))
-        dashboard.write("<a href='#toc'>[back to top]</a>\n")
         dashboard.write(inner_html)
     dashboard.write("</div></body></html>" + "\n")
 
@@ -249,20 +267,17 @@ def main():
         if key in args.__dict__:
             config[key] = args.__dict__[key]
 
-    title_list = config['comma_sep_scenario_titles'].split(',')
-    scen_id = int(config['scenario_id']) - 1
-    if len(title_list) > 0 and scen_id >= 0:
-        config['scenario_title'] = title_list[scen_id]
-
-    dfs, time_step_format = load_output_data(dict(**config)) # pass a copy so config cannot be changed as side effect
+    dfs, time_step_format = load_output_data(config)
     labels = load_labels()
     figures = make_figure(dfs, labels, time_step_format)
-    
+    data_for_plots = make_plot_dfs(dfs, labels, time_step_format)
+
     if dash == True:
-        return figures
+        #return figures
+        return data_for_plots
     else:
         # TODO: Print all figures from different scenarios reasonably
-        figures_to_html(figures[0], labels, config['scenario_title'], config['first_time_step'], filename=config['output_html_file'])
+        figures_to_html(figures[0], filename=config['output_html_file'])
 
 
 if __name__ == "__main__":
