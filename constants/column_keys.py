@@ -1,0 +1,6 @@
+SCENARIO: str = 'scenario'
+DATE_GENERATED: str = 'date_generated'
+CHART: str = 'chart'
+IS_PREDICTION: str = 'is_prediction'
+TIMESTEP_FORMATTED: str = 'timestep_formatted'
+PERCENTILE: str = 'percentile'
